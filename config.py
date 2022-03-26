@@ -1,5 +1,6 @@
 import threading
 
 threadLock = threading.Lock()
-BUFSIZE = 1024
+PACKETSIZE = 20
 WINDOWSIZE = 400
+BUFSIZE = 1024

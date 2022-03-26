@@ -11,7 +11,6 @@ def send_file_request(peer_info, filename, s, server_address):
 
     print(f'sending file request to {client_address} from {server_address}')
     s.sendto(request_msg, client_address)
-    s.close()
 
 def server_thread(node_info, s):
     global fileframes
@@ -19,6 +18,7 @@ def server_thread(node_info, s):
 
     while True:
         bytesAddressPair = s.recvfrom(c.BUFSIZE)
+        if not bytesAddressPair: break
         msg, client_address = pickle.loads(bytesAddressPair[0]), bytesAddressPair[1]
         print(f'received msg {msg} from client {client_address}')
 
@@ -43,11 +43,12 @@ def send_file(client_address, filename, s):
 
     print('sending frames to: ', client_address)
     f = open(filename, "rb")
-    frame = f.read(c.BUFSIZE); fileframes.append(frame); frame_num = 0
+    frame = f.read(c.PACKETSIZE); fileframes.append(frame); frame_num = 0
+    #TODO: IMPLEMENT SO THAT IT ONLY READS UNTIL WE REACHED THE END OF WINDOW// UPDATE WINDOW ACCORDINGLY
     while (frame):
         msg = pickle.dumps([frame_num, frame])
         s.sendto(msg, client_address)
-        frame = f.read(c.WINDOWSIZE); fileframes.append(frame)
+        frame = f.read(c.PACKETSIZE); fileframes.append(frame)
         frame_num += 1
 
 #Resends frame when received negative ACK
