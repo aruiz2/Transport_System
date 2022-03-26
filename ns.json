@@ -1,13 +1,14 @@
 {
- "hostname": "ece028.ece.local.cmu.edu",
- "port": 18741,
- "peers": 1,
- "content_info": ["abc.mp4", "def.mp4"],
- "peer_info": [
- {
- "port": 18743,
- "content_num": 2,
- "content_info": ["video.ogg", "audio.ogv"]
- }
- ]
+    "hostname": "ece028.ece.local.cmu.edu",
+    "port": 18741,
+    "peers": 1,
+    "content_info": ["abc.mp4", "def.mp4"],
+    "peer_info": [
+        {
+            "hostname": "ece002.ece.local.cmu.edu",
+            "port": 18742,
+            "content_num": 2,
+            "content_info": ["video.ogg", "audio.ogv"]
+        }
+    ]
 }
