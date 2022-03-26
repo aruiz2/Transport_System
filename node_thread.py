@@ -3,14 +3,12 @@ import config as c
 
 def send_file_request(peer_info, filename, s, server_address):
     #Set up socket and connection
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_ip = socket.gethostbyname(peer_info["hostname"])
-    print("peer hostname:", peer_info["hostname"])
     client_address = (server_ip, peer_info["port"])
     
     #Build request message
     request_msg = pickle.dumps("FILE_REQUEST:" + filename)
+
     print(f'sending file request to {client_address} from {server_address}')
     s.sendto(request_msg, client_address)
     s.close()
