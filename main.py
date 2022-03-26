@@ -10,16 +10,24 @@ def main():
     with open(file, 'r') as info:
         node_info = json.load(info)
 
-    server = threading.Thread(target = server_thread, args = (node_info, ), daemon = True)
+    #Create server socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_ip = socket.gethostbyname(node_info["hostname"])
+    server_address = (server_ip, node_info["port"])
+    s.bind(server_address)
+    print("node address: ", [node_info["hostname"], node_info["port"], server_ip])
+    
+    #Start server thread
+    server = threading.Thread(target = server_thread, args = (node_info, s, ), daemon = True)
     server.start()
 
     while True:
-        command = input()
+        filename = input()
 
-        if len(command) != 0:
-            peer_info = find_peer_with_file(node_info, command)
-            client = threading.Thread(target = send_file_request, args = (peer_info, command, ), daemon = True)
-            client.start()
+        if len(filename) != 0:
+            peer_info = find_peer_with_file(node_info, filename)
+            if peer_info: send_file_request(peer_info, filename, s, server_address)
 
 def find_peer_with_file(node_info, file_required):
     for peer in node_info["peer_info"]:

@@ -8,7 +8,7 @@
             "hostname": "ece002.ece.local.cmu.edu",
             "port": 18742,
             "content_num": 2,
-            "content_info": ["video.ogg", "audio.ogv"]
+            "content_info": ["video.ogg", "audio.ogv", "im.jpeg"]
         }
     ]
 }
