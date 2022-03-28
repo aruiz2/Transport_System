@@ -8,3 +8,4 @@ BUFSIZE = 1024
 
 #Data Structures
 fileframes_received = {}
+received_acks = set()
