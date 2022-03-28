@@ -8,8 +8,9 @@ BUFSIZE = 1024
 
 #Data Structures
 fileframes_received = {}
+fileframes_sent_dict = {}
 received_acks = set()
 
 #Others
-frames_sent = 0
 received_file_request = False
+frames_sent = 0
