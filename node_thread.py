@@ -28,8 +28,13 @@ def server_thread(node_info, s):
         if not bytesAddressPair: break
         msg, client_address = pickle.loads(bytesAddressPair[0]), bytesAddressPair[1]
         #print(f'received msg {msg} from client {client_address}')
-
         
+        #check we are done sending a file
+        if c.received_file_request and len(c.received_acks) == c.frames_sent:
+            c.received_file_request = False
+            done_signal = pickle.dumps("DONE")
+            s.sendto(done_signal, client_address)
+
         #Write the data into array
         if type(msg) == list:
             frame_number = msg[0]
@@ -58,6 +63,7 @@ def server_thread(node_info, s):
             f.close()
 
         elif msg[:12] == "FILE_REQUEST":
+            c.received_file_request = True
             client = threading.Thread(target = send_file, args = (client_address, msg[13:], s,  ), daemon = True)
             client.start()
 
@@ -72,6 +78,7 @@ def server_thread(node_info, s):
 #Send file with Selective Repeat AQR
 def send_file(client_address, filename, s):
     fileframes_sent = {}
+    c.frames_sent = 0
     c.received_acks = set()
 
     print('sending frames to: ', client_address)
@@ -93,6 +100,7 @@ def send_file(client_address, filename, s):
                 frame = f.read(c.PACKETSIZE)
         fileframes_sent[frame_num] = frame
         
+    c.frames_sent = frame_num
     s.sendto(pickle.dumps("DONE"), client_address)
 
 #Resends frame when received negative ACK
