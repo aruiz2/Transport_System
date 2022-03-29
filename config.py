@@ -14,3 +14,4 @@ received_acks = set()
 #Others
 received_file_request = False
 frames_sent = 0
+client_address = None
