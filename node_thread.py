@@ -1,9 +1,9 @@
-import threading, socket, sys, pickle
+import threading, socket, sys, pickle, time
 import config as c
 
 def send_file_request(peer_info, filename, s, server_address):
-    print('RESETTING FILEFRAMES_RECEIVED FROM SEND_FILE_REQUEST')
     c.fileframes_received = {} #stores all the file frames so we can retrasmit in case of negative ACK
+
     #Set up socket and connection
     server_ip = socket.gethostbyname(peer_info["hostname"])
     client_address = (server_ip, peer_info["port"])
@@ -27,69 +27,45 @@ def server_thread(node_info, s):
         if not bytesAddressPair: break
         msg, client_address = pickle.loads(bytesAddressPair[0]), bytesAddressPair[1]
         #print(f'received msg {msg} from client {client_address}')
-        #print('fileframes_sent', sorted(list(c.fileframes_sent_dict.keys()))); print('\n')
-        #print(f'fileframes_received: {sorted(c.fileframes_received.keys())}'); print('\n')
-        
-        #check we are done sending a file
-        if c.received_file_request and len(c.received_acks) == c.frames_sent and c.frames_sent != 0:
-            print(f'done sending the file len(acks): {len(c.received_acks)} and c.frames_sent: {c.frames_sent}')
-            reset_sender_frame_variables()
-            done_signal = pickle.dumps("DONE")
-            s.sendto(done_signal, client_address)
-        
-        #Received a frame
+
+        #Write the data into array
         if type(msg) == list:
             frame_number = msg[0]
             frame_content = msg[1]
-
             c.threadLock.acquire()
             c.fileframes_received[frame_number] = frame_content
             c.threadLock.release()
 
-            frame_ack = pickle.dumps("ACK" + str(frame_number))
-            
-            #print(list(sorted(c.fileframes_received.keys()))); print('\n')
-            #print('received frame number:' , frame_number)
-            
-            #send ACK 3 times to increase probability it is not lost
-            for _ in range(3):
-                print(f'sending {"ACK" + str(frame_number)}'); 
-                s.sendto(frame_ack, client_address) #send ACK to server
+            #print(f'c.fileframes_received: {sorted(c.fileframes_received.keys())}')
 
-            #Check if we need to send a negative ACK
+            send_ack(s, frame_number, client_address)
             send_negative_ack(s, client_address, frame_number)
 
-        #Received acknowledgement
+        #received acknowledgement
         elif msg[:3] == "ACK":
             frame_ack_num = int(msg[3:])
             c.threadLock.acquire()
             c.received_acks.add(frame_ack_num)
             c.threadLock.release()
-            
-            print(f'received ack{frame_ack_num}!')
-            print(f'received_acks{c.received_acks}'); print('\n')
 
-        #Received finished sending frames signal
         elif msg == "DONE":
-            c.threadLock.acquire()
+            # print(f'length fileframes_received: {len(c.fileframes_received)}')
+            # print(f'fileframes_received.keys(): {sorted(c.fileframes_received.keys())}')
+
             f = open('imtest.jpeg', 'wb')
             for frame_num in sorted(c.fileframes_received.keys()):
                 frame = c.fileframes_received[frame_num]
                 f.write(frame)
             f.close()
-            c.threadLock.release()
-            print('reset receiver frame variables!!!\n\n')
-            reset_receiver_frame_variables()
 
-        #Received request for a file
         elif msg[:12] == "FILE_REQUEST":
-            c.received_file_request = True
             client = threading.Thread(target = send_file, args = (client_address, msg[13:], s,  ), daemon = True)
             client.start()
 
         #Received Negative ACK
         elif msg[:7] == "NEG_ACK":
             frame_to_resend = int(msg[7:])
+            #print(f"received NEG ACK{frame_to_resend}")
             resend_frame(frame_to_resend, client_address, s)
         
 
@@ -98,56 +74,47 @@ def server_thread(node_info, s):
 #Send file with Selective Repeat AQR
 def send_file(client_address, filename, s):
     c.fileframes_sent_dict = {}
-    c.received_acks = set()
-    c.frames_sent = 0
 
     print('sending frames to: ', client_address)
     f = open(filename, "rb")
     frame = f.read(c.PACKETSIZE); c.fileframes_sent_dict[0] = frame; frame_num = 0
-    window_edge = c.WINDOWSIZE
-    while frame:
+
+    #TODO: IMPLEMENT SO THAT IT ONLY READS UNTIL WE REACHED THE END OF WINDOW// UPDATE WINDOW ACCORDINGLY
+    while (frame):
         msg = pickle.dumps([frame_num, frame])
         for _ in range(3):
             s.sendto(msg, client_address)
-        #print(sorted(list(c.fileframes_sent_dict.keys()))); print('\n')
-        if frame_num < window_edge: 
-            frame = f.read(c.PACKETSIZE)
-            frame_num += 1
-        else:
-            #print('received_acks:', c.received_acks); print('\n')
-            #print(len(c.received_acks), window_edge)
-
-            if len(c.received_acks) >= window_edge:
-                frame_num += 1
-                window_edge += 1
-                frame = f.read(c.PACKETSIZE)
-        
+            time.sleep(0.0001)
+            
+        #update fileframes_sent dictionary
         c.threadLock.acquire()
         c.fileframes_sent_dict[frame_num] = frame
         c.threadLock.release()
+
+        #read the next frame
+        frame = f.read(c.PACKETSIZE); 
+        frame_num += 1
+        #print(f'sending frame{frame_num}')
     
-    c.frames_sent = frame_num
-    #s.sendto(pickle.dumps("DONE"), client_address)
+    s.sendto(pickle.dumps("DONE"), client_address)
 
 #Resends frame when received negative ACK
 def resend_frame(frame, client_address, s):
     frame = pickle.dumps(c.fileframes_sent_dict[frame])
     s.sendto(frame, client_address)
-    
-#checks if we need to send negative ack, and does so if needed
+
+#Sends acknowledgements that it has receivedd a frame
+def send_ack(s, frame_number, client_address):
+    frame_ack = pickle.dumps("ACK" + str(frame_number))
+
+    for _ in range(3):
+        s.sendto(frame_ack, client_address)
+
+#Sends negative acknowledgements to account for missing frames
 def send_negative_ack(s, client_address, frame_number_received):
     for frame_num in range(frame_number_received): #TODO: MIGHT WANT TO EDIT THIS, MIGHT BE INEFFICIENT
         if frame_num not in c.fileframes_received:
+
             neg_ack = pickle.dumps("NEG_ACK" + str(frame_num))
-            s.sendto(neg_ack, client_address)
-
-def reset_receiver_frame_variables():
-    print('RESETTING FILEFRAMES_RECEIVED FROM RESET FUNCTION')
-    c.fileframes_received = {}
-    c.frames_sent = 0
-
-def reset_sender_frame_variables():
-    #print("RESETTING SENDER_FRAME_VARIABLES")
-    c.fileframes_sent_dict = {}
-    c.received_acks = set()
-    c.received_file_request = False
+            for _ in range(3):
+                s.sendto(neg_ack, client_address)
