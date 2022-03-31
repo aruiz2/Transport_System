@@ -29,7 +29,7 @@ def server_thread(node_info, s):
         #server debugging statements    
         if c.received_file_request: 
             check_not_received_acks(s, c.client_address)
-            #print(f'length received_acks: {len(c.received_acks)}')
+            # print(f'length received_acks: {len(c.received_acks)}')
             # print(f'received_acks: {c.received_acks}')
             # print(f'len(received_akcs): {len(c.received_acks)} , frames_sent: {c.frames_sent}')
             # print(f'received_file_request: {c.received_file_request}')
@@ -42,8 +42,8 @@ def server_thread(node_info, s):
 
         #Send done signal when received all acks
         if c.received_file_request and c.frames_sent != 0 and len(c.received_acks) == c.frames_sent:
-            # print(f'length received_acks: {len(c.received_acks)} // frames_sent: {c.frames_sent}')
-            # print(f'length fileframes_sent_dict: {len(c.fileframes_sent_dict.keys())}\n\n') 
+            print(f'length received_acks: {len(c.received_acks)} // frames_sent: {c.frames_sent}')
+            print(f'length fileframes_sent_dict: {len(c.fileframes_sent_dict.keys())}\n\n') 
             reset_sender_frame_variables()
             
             #TODO: WHAT IF THE DONE SIGNAL IS DROPPED?
@@ -51,8 +51,8 @@ def server_thread(node_info, s):
                 s.sendto(pickle.dumps("DONE"), c.client_address)
         
         #Checks that we received all frames from the server up to current frame, if not send negative ACK
-        # if len(c.fileframes_received.keys()) > 0:
-        #     send_negative_ack(s, c.client_address, max(list(c.fileframes_received.keys())))
+        if len(c.fileframes_received.keys()) > 0:
+            send_negative_ack(s, c.client_address, max(list(c.fileframes_received.keys())))
         
         #Get message received
         bytesAddressPair = s.recvfrom(c.BUFSIZE)
@@ -70,7 +70,7 @@ def server_thread(node_info, s):
                 c.threadLock.release()
                 send_ack(s, frame_number, c.client_address)
 
-            # send_negative_ack(s, c.client_address, frame_number)
+            send_negative_ack(s, c.client_address, frame_number)
 
         #received acknowledgement
         elif msg[:3] == "ACK":
@@ -80,7 +80,8 @@ def server_thread(node_info, s):
             c.threadLock.release()
         
         elif msg == "DONE" and c.fileframes_received:
-            #print('Received DONE signal')
+            print('\nReceived DONE signal\n')
+            print(f'frames received: {len(c.fileframes_received.keys())}')
             f = open('imtest.jpeg', 'wb')
             for frame_num in sorted(c.fileframes_received.keys()):
                 frame = c.fileframes_received[frame_num]
@@ -115,7 +116,6 @@ def send_file(client_address, filename, s):
 
     while (frame):
         msg = pickle.dumps([frame_num, frame])
-
         if frame_num < window_edge:
             #print(f'sending frame{frame_num} @window_edge:{window_edge}')
             for _ in range(3):
@@ -124,6 +124,11 @@ def send_file(client_address, filename, s):
 
             frame = f.read(c.PACKETSIZE)
             frame_num += 1
+
+            print(f'length sent frame: {len(c.fileframes_sent_dict.keys())}')
+            print(f'length received_acks: {len(c.received_acks)}')
+            #print(f'received_acks: {c.received_acks}')
+            print('\n\n')
         else:
             if len(c.received_acks) >= window_edge:
                 #print(f'sending frame{frame_num} @window_edge:{window_edge} with {len(c.received_acks)} received_acks')
@@ -136,8 +141,7 @@ def send_file(client_address, filename, s):
                 frame = f.read(c.PACKETSIZE)
     f.close()
     c.frames_sent = frame_num
-    # print(f'done sending {c.frames_sent} frames')
-    # print(f'fileframes_sent: {sorted(c.fileframes_sent_dict.keys())}')
+    print(f'done sending {c.frames_sent} frames')
     # print(f'received_acks: {sorted(c.received_acks)}')
 
 #Updates fileframes_sent_dict with threadLock

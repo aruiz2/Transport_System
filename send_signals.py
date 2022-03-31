@@ -21,7 +21,7 @@ def send_negative_ack(s, client_address, frame_number_received):
     for frame_num in range(frame_number_received): #TODO: MIGHT WANT TO EDIT THIS, MIGHT BE INEFFICIENT
         if  frame_num not in c.fileframes_received.keys():
             
-            print(f'sending negACK{frame_num}')
+            #print(f'sending negACK{frame_num}')
             neg_ack = pickle.dumps("NEG_ACK" + str(frame_num))
             for _ in range(3):
                 s.sendto(neg_ack, client_address)
