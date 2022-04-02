@@ -26,6 +26,7 @@ def main():
         filename = input()
 
         if len(filename) != 0:
+            c.filename = filename
             peer_info = find_peer_with_file(node_info, filename)
             if peer_info: send_file_request(peer_info, filename, s, server_address)
 

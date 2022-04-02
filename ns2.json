@@ -1,5 +1,5 @@
 {
-    "hostname": "ece002.ece.local.cmu.edu",
+    "hostname": "ece028.ece.local.cmu.edu",
     "port": 18742,
     "peers": 1,
     "content_info": ["abc.mp4", "def.mp4"],
@@ -7,8 +7,8 @@
         {
             "hostname": "ece028.ece.local.cmu.edu",
             "port": 18741,
-            "content_num": 1,
-            "content_info": ["im.jpeg", "cmu.jpeg"]
+            "content_num": 3,
+            "content_info": ["vini.jpeg", "cmu.jpeg", "trailer_400p.ogg"]
         }
     ]
 }

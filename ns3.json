@@ -1,5 +1,5 @@
 {
-    "hostname": "ece003.ece.local.cmu.edu",
+    "hostname": "ece028.ece.local.cmu.edu",
     "port": 18743,
     "peers": 1,
     "content_info": ["video.ogg", "audio.ogv"],
