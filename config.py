@@ -18,3 +18,4 @@ received_file_request = False
 frames_sent = 0
 client_address = None
 time_ack = 0 #Keeps track of the last time we received an ack
+sleep_period = 0.001

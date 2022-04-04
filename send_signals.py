@@ -3,12 +3,20 @@ import config as c
 import time
 
 #Resends frame when received negative ACK
-def resend_frame(frame, client_address, s):
+def resend_frame(frame_num, frame, client_address, s):
     # print(f'c.received_acks: {sorted(c.received_acks)}')
     # print(f'fileframes_sent: {list(sorted(c.fileframes_sent_dict.keys()))}')
     # print('\n')
 
-    s.sendto(pickle.dumps(frame), client_address)
+    #update time sent of frame
+    c.threadLock.acquire()
+    c.fileframes_sent_dict[frame_num]['time'] = time.time() - c.start_time
+    c.threadLock.release()
+
+    #send frame
+    for _ in range(3):
+        msg = pickle.dumps([frame_num, frame])
+        s.sendto(msg, client_address)
     time.sleep(0.001)
 
 #Sends acknowledgements that it has receivedd a frame

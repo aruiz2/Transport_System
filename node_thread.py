@@ -16,7 +16,7 @@ def send_file_request(peer_info, filename, s, server_address):
     #Send the request
     print(f'sending file request to {client_address} from {server_address}')
     s.sendto(request_msg, client_address)
-    time.sleep(0.001)
+    time.sleep(c.sleep_period)
 
 def server_thread(node_info, s):
 
@@ -26,7 +26,7 @@ def server_thread(node_info, s):
         if c.received_file_request:
             check_not_received_acks(s, c.client_address)
             print(f'length sent frames: {len(c.fileframes_sent_dict.keys())}')
-            print(f'length received_acks: {len(c.received_acks)}')
+            print(f'length received_acks: {len(c.received_acks)}, c.frames_sent: {c.frames_sent}, c.received_file_request: {c.received_file_request}')
             print('\n\n')
 
         #client debugging statements
@@ -57,7 +57,7 @@ def server_thread(node_info, s):
         if type(msg) == list:
             frame_number = msg[0]
             frame_content = msg[1]
-            #print(f'received packet frame {frame_number}\n')
+            print(f'received packet frame {frame_number}\n')
 
             if frame_number not in c.fileframes_received: #TODO: MIGHT BE INEFFICIENT
                 c.threadLock.acquire()
@@ -110,39 +110,49 @@ def send_file(client_address, filename, s):
     print('sending frames to: ', client_address)
     f = open(filename, "rb")
     frame = f.read(c.PACKETSIZE);
-    frame_num = 0
+    frame_num = -1
+    msg = []
 
     while (frame):
-        msg = pickle.dumps([frame_num, frame])
-        if frame_num < window_edge:
-            #print(f'sending frame{frame_num} @window_edge:{window_edge}')
-            for _ in range(3):
-                s.sendto(msg, client_address)
-                time.sleep(0.001)
-            update_fileframes_sent_dict(frame_num, frame)
 
-            frame = f.read(c.PACKETSIZE)
+        if frame_num < window_edge - 1:
+            print(f'sending frame{frame_num} @window_edge:{window_edge}')
             frame_num += 1
+            update_fileframes_sent_dict(frame_num, frame)
+            for _ in range(3):
+                msg = pickle.dumps([frame_num, frame])
+                s.sendto(msg, client_address)
+                time.sleep(c.sleep_period)
+            
+            frame = f.read(c.PACKETSIZE)
 
             print(f'length sent frame: {len(c.fileframes_sent_dict.keys())}')
             print(f'length received_acks: {len(c.received_acks)}')
             #print(f'received_acks: {c.received_acks}')
             print('\n\n')
         else:
-            if len(c.received_acks) >= window_edge:
-                #print(f'sending frame{frame_num} @window_edge:{window_edge} with {len(c.received_acks)} received_acks')
-                for _ in range(3):
-                    s.sendto(msg, client_address)
-                    time.sleep(0.001)
-                update_fileframes_sent_dict(frame_num, frame)
-
+            if len(c.received_acks) == window_edge:
                 frame_num += 1
+                print(f'sending frame{frame_num} @window_edge:{window_edge} with {len(c.received_acks)} received_acks')
+                update_fileframes_sent_dict(frame_num, frame)
+                for _ in range(3):
+                    msg = pickle.dumps([frame_num, frame])
+                    s.sendto(msg, client_address)
+                    time.sleep(c.sleep_period)
+
                 window_edge += 1
                 frame = f.read(c.PACKETSIZE)
+            else:
+                curr_time = time.time() - c.start_time
+                if curr_time - c.fileframes_sent_dict[frame_num]['time'] >= c.ACK_PERIOD:
+                    print(f'fileframe sent time: {c.fileframes_sent_dict[frame_num]["time"]} \t time: {curr_time}')
+                    print(f'resending frame{frame_num} @window_edge:{window_edge} with {len(c.received_acks)} received_acks\n')
+                    resend_frame(frame_num, frame, client_address, s)
+
     f.close()
-    c.frames_sent = frame_num
+    c.frames_sent = frame_num + 1 #to include the 0 packet
     print(f'done sending {c.frames_sent} frames')
-    print(f'received_acks: {len(sorted(c.received_acks))})')
+    print(f'received_acks: {len(sorted(c.received_acks))}) , c.frames_sent: {c.frames_sent}')
 
 #Updates fileframes_sent_dict with threadLock
 def update_fileframes_sent_dict(frame_num, frame):
@@ -157,4 +167,4 @@ def check_not_received_acks(s, client_address):
         if curr_time - c.fileframes_sent_dict[frame_num]['time'] >= c.ACK_PERIOD:
             if frame_num not in c.received_acks:
                 frame = c.fileframes_sent_dict[frame_num]['frame']
-                resend_frame(frame, client_address, s)
+                resend_frame(frame_num, frame, client_address, s)
