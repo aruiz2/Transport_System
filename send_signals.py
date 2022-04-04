@@ -17,7 +17,7 @@ def resend_frame(frame_num, frame, client_address, s):
     for _ in range(3):
         msg = pickle.dumps([frame_num, frame])
         s.sendto(msg, client_address)
-    time.sleep(0.001)
+    time.sleep(c.sleep_period)
 
 #Sends acknowledgements that it has receivedd a frame
 def send_ack(s, frame_number, client_address):
@@ -25,7 +25,7 @@ def send_ack(s, frame_number, client_address):
 
     for _ in range(3):
         s.sendto(frame_ack, client_address)
-        time.sleep(0.001)
+        time.sleep(c.sleep_period)
 
 #Sends negative acknowledgements to account for missing frames
 def send_negative_ack(s, client_address, frame_number_received):
@@ -36,4 +36,4 @@ def send_negative_ack(s, client_address, frame_number_received):
             neg_ack = pickle.dumps("NEG_ACK" + str(frame_num))
             for _ in range(3):
                 s.sendto(neg_ack, client_address)
-                time.sleep(0.001)
+                time.sleep(c.sleep_period)
