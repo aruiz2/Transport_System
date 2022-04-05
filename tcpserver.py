@@ -25,6 +25,9 @@ def main():
     while True:
         filename = input()
 
+        if filename == 'time':
+            print(time.time() - c.start_time)
+        
         if len(filename) != 0:
             c.filename = filename
             peer_info = find_peer_with_file(node_info, filename)

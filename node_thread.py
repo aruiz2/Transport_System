@@ -25,8 +25,8 @@ def server_thread(node_info, s):
         #server debugging statements    
         if c.received_file_request:
             pass
-            # print(f'length sent frames: {len(c.fileframes_sent_dict.keys())}')
-            # print(f'length received_acks: {len(c.received_acks)}, c.frames_sent: {c.frames_sent}, c.received_file_request: {c.received_file_request}')
+            print(f'length sent frames: {len(c.fileframes_sent_dict.keys())}')
+            print(f'length received_acks: {len(c.received_acks)}, c.frames_sent: {c.frames_sent}, c.received_file_request: {c.received_file_request}')
             # print('\n\n')
 
         #client debugging statements

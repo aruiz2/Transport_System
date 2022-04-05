@@ -2,8 +2,8 @@ import threading, time
 
 #Constants
 threadLock = threading.Lock()
-PACKETSIZE = 900
-WINDOWSIZE = 400
+PACKETSIZE = 1000
+WINDOWSIZE = 20
 BUFSIZE = 1024
 ACK_PERIOD = 2
 start_time = time.time()
@@ -24,6 +24,7 @@ sleep_period = 0.001
 '''
 ----------------------------------------------------------------------
 Best case
+PACKETSIZE = 1000, WINDOWSIZE = 20, ACK_PERIOD = 2 -> 20 SECONDS
 PACKETSIZE = 900, WINDOWSIZE = 400, ACK_PERIOD = 2 -> 24 seconds (varies aslo got 33 seconds)
 ----------------------------------------------------------------------
 

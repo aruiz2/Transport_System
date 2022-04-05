@@ -2,7 +2,7 @@
     "hostname": "ece028.ece.local.cmu.edu",
     "port": 18741,
     "peers": 1,
-    "content_info": ["vini.jpeg", "cmu.jpeg", "trailer_400p.ogg"],
+    "content_info": ["vini.jpeg", "cmu.jpeg", "trailer_400p.ogg", "final.ogv"],
     "peer_info": [
         {
             "hostname": "ece028.ece.local.cmu.edu",
