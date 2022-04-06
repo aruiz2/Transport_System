@@ -31,9 +31,14 @@ def send_ack(s, frame_number, client_address):
 #Sends negative acknowledgements to account for missing frames
 def send_negative_ack(s, client_address, frame_number_received):
     client_port = client_address[1]
-    if client_port in c.fileframes_received: 
-        for frame_num in range(frame_number_received): #TODO: MIGHT WANT TO EDIT THIS, MIGHT BE INEFFICIENT
-            if frame_num not in c.fileframes_received[client_port].keys():
+    if client_port in c.fileframes_received:
+        #TODO: DEBUG THIS!
+        # print(f'frame_number_received: {frame_number_received}')
+        frame_num = 0
+
+        for frame_num in range(frame_number_received):
+            # print(sorted(c.fileframes_received[client_port]))
+            if frame_num not in c.fileframes_received[client_port]:
                 
                 #print(f'sending negACK{frame_num}')
                 neg_ack = pickle.dumps("NEG_ACK" + str(frame_num))

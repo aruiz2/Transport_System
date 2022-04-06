@@ -2,9 +2,9 @@ import threading, time
 
 #Constants
 threadLock = threading.Lock()
-PACKETSIZE = 1000
-WINDOWSIZE = 2
 BUFSIZE = 1024
+PACKETSIZE = 1000
+WINDOWSIZE = 700
 ACK_PERIOD = 2
 start_time = time.time()
 
