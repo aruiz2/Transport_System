@@ -4,8 +4,9 @@ import threading, time
 threadLock = threading.Lock()
 BUFSIZE = 1024
 PACKETSIZE = 1000
-WINDOWSIZE = 700
+WINDOWSIZE = 3000
 ACK_PERIOD = 2
+sleep_period = 0.0001
 start_time = time.time()
 
 #Data Structures
@@ -17,7 +18,6 @@ received_acks = {}
 received_file_request = dict()
 frames_sent = {}
 time_ack = 0 #Keeps track of the last time we received an ack
-sleep_period = 0.001
 
 
 '''

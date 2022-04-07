@@ -1,5 +1,5 @@
 import config as c
-def reset_receiver_frame_variables():
+def reset_receiver_frame_variables(client_port):
     c.fileframes_received[client_port] = {}
     c.frames_sent = 0
 

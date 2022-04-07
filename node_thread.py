@@ -56,7 +56,6 @@ def server_thread(node_info, s):
         
         #Received a packet
         if type(msg) == list:
-            print(f'message: {msg[0]}')
             frame_number = msg[0]
             frame_content = msg[1]
             #print(f'received packet frame {frame_number}\n')
@@ -72,7 +71,7 @@ def server_thread(node_info, s):
                 c.threadLock.release()
                 send_ack(s, frame_number, client_address)
 
-            send_negative_ack(s, client_address, frame_number)
+            #send_negative_ack(s, client_address, frame_number)
     
         #received acknowledgement
         elif msg[:3] == "ACK":
@@ -90,6 +89,7 @@ def server_thread(node_info, s):
             f = open(c.filename, 'wb') #FOR SUBMIT
             #f = open('test' + str(node_info['port']) + '.jpeg', 'wb') #FOR TESTING .JPEG
             #f = open('test' + str(node_info['port']) + '.ogg', 'wb') #FOR TESTING .OGG
+
             for frame_num in sorted(c.fileframes_received[client_port]):
                 frame = c.fileframes_received[client_port][frame_num]
                 f.write(frame)
@@ -146,7 +146,7 @@ def send_file(client_address, filename, s):
         else:
             if client_port in c.received_acks and len(c.received_acks[client_port]) == window_edge:
                 frame_num += 1
-                #print(f'sending frame{frame_num} @window_edge:{window_edge} with {len(c.received_acks)} received_acks')
+                print(f'sending frame{frame_num} @window_edge:{window_edge} with {len(c.received_acks)} received_acks')
                 update_fileframes_sent_dict(frame_num, frame, client_port)
                 for _ in range(3):
                     msg = pickle.dumps([frame_num, frame])
@@ -158,7 +158,7 @@ def send_file(client_address, filename, s):
             else:
                 curr_time = time.time() - c.start_time
                 if curr_time - c.fileframes_sent_dict[client_port][frame_num]['time'] >= c.ACK_PERIOD:
-                    # print(f'fileframe sent time: {c.fileframes_sent_dict[frame_num]["time"]} \t time: {curr_time}')
+                    print(f'fileframe sent time: {c.fileframes_sent_dict[frame_num]["time"]} \t time: {curr_time}')
                     print(f'resending frame{frame_num} @window_edge:{window_edge} with {len(c.received_acks[client_port])} received_acks\n')
                     resend_frame(frame_num, frame, client_address, s)
 
