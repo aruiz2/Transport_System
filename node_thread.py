@@ -24,41 +24,26 @@ def server_thread(node_info, s):
 
         #Get message received
         bytesAddressPair = s.recvfrom(c.BUFSIZE)
-        msg, client_address = pickle.loads(bytesAddressPair[0]), bytesAddressPair[1]
+        try:
+            msg, client_address = pickle.loads(bytesAddressPair[0]), bytesAddressPair[1]
+        except: pass
         client_port = client_address[1]
-
-        #server debugging statements   
-        if client_port in c.received_file_request and c.received_file_request[client_port]:
-            try:
-                print(f'\n{client_port}, length received_acks: {len(c.received_acks[client_port])}')
-                #print(f'length sent frames: {len(c.fileframes_sent_dict.keys())}')
-                #print(f'length received_acks: {len(c.received_acks)}')
-                # print('\n\n')
-            except: pass
-
-        #client debugging statements
-        if client_port in c.received_file_request and not c.received_file_request[client_port]:
-            pass
-            #print(f'length received frames {len(c.fileframes_received)}')
 
          #Send DONE signal when received all acks
         if (client_port in c.received_file_request and 
             client_port in c.frames_sent and c.frames_sent[client_port] != 0):
             if c.received_file_request[client_port] and len(c.received_acks[client_port]) == c.frames_sent[client_port]:
-                # print(f'length received_acks: {len(c.received_acks)} // frames_sent: {c.frames_sent}')
-                # print(f'length fileframes_sent_dict: {len(c.fileframes_sent_dict.keys())}\n\n') 
                 reset_sender_frame_variables(client_port)
                 
                 print(f'\nsending DONE signal')
-                #TODO: WHAT IF THE DONE SIGNAL IS DROPPED?
                 for _ in range(3):
                     s.sendto(pickle.dumps("DONE"), client_address)
         
         #Received a packet
         if type(msg) == list:
+            #print('Received frame, sending ACK!')
             frame_number = msg[0]
             frame_content = msg[1]
-            #print(f'received packet frame {frame_number}\n')
 
             #Handle first frame received
             if client_port not in c.fileframes_received:
@@ -71,31 +56,29 @@ def server_thread(node_info, s):
                 c.threadLock.release()
                 send_ack(s, frame_number, client_address)
 
-            #send_negative_ack(s, client_address, frame_number)
     
         #received acknowledgement
         elif msg[:3] == "ACK":
             frame_ack_num = int(msg[3:])
+            print(f'received ACK{frame_ack_num}')
             if client_port not in c.received_acks: 
                 c.threadLock.acquire()
                 c.received_acks[client_port] = set()
                 c.threadLock.release()
             c.received_acks[client_port].add(frame_ack_num)
+            #print(f'received ACK!\nnow length received acks is {len(c.received_acks[client_port])}')
         
         elif msg == "DONE" and client_port in c.fileframes_received and c.fileframes_received[client_port]:
             print('\nReceived DONE signal\n')
-            #print(f'frames received: {len(c.fileframes_received.keys())}')
-            #TODO: EDIT THIS FOR SUBMIT
             f = open(c.filename, 'wb') #FOR SUBMIT
-            #f = open('test' + str(node_info['port']) + '.jpeg', 'wb') #FOR TESTING .JPEG
-            #f = open('test' + str(node_info['port']) + '.ogg', 'wb') #FOR TESTING .OGG
 
             for frame_num in sorted(c.fileframes_received[client_port]):
                 frame = c.fileframes_received[client_port][frame_num]
                 f.write(frame)
             f.close()
+
             reset_receiver_frame_variables(client_port)
-            print(f'************************************************\ntime taken to receive file: {c.time.time() - c.start_time}************************************************\n')
+            print(f'************************************************\ntime taken to receive & write file: {c.time.time() - c.start_time}\n************************************************\n')
 
         elif msg[:12] == "FILE_REQUEST":
             c.received_file_request[client_port] = True
@@ -105,7 +88,6 @@ def server_thread(node_info, s):
         #Received Negative ACK
         elif msg[:7] == "NEG_ACK":
             frame_num = int(msg[7:])
-            #print(f'received NEG_ACK for frame{frame_num} and trying to resend')
             frame = c.fileframes_sent_dict[client_port][frame_num]['frame']
             resend_frame(frame_num, frame, client_address, s)
         
@@ -119,63 +101,73 @@ def send_file(client_address, filename, s):
 
     print('sending frames to: ', client_address)
     f = open(filename, "rb")
-    frame = f.read(c.PACKETSIZE);
     frame_num = -1
     msg = []
+    exit = False
 
-    print(f'the size of what we are sending is {os.path.getsize(filename)} bytes')
-    # exit(-1)
-
-    while (frame):
+    while not exit:
 
         if frame_num < window_edge - 1:
-            #print(f'sending frame{frame_num} @window_edge:{window_edge}')
+            frame = f.read(c.PACKETSIZE)
+            print(f'sending frame{frame_num} @window_edge:{window_edge}\n')
             frame_num += 1
             update_fileframes_sent_dict(frame_num, frame, client_port)
+
             for _ in range(3):
                 msg = pickle.dumps([frame_num, frame])
                 s.sendto(msg, client_address)
                 time.sleep(c.sleep_period)
-            
-            frame = f.read(c.PACKETSIZE)
 
-            # print(f'length sent frame: {len(c.fileframes_sent_dict.keys())}')
-            # print(f'length received_acks: {len(c.received_acks)}')
-            # #print(f'received_acks: {c.received_acks}')
-            # print('\n\n')
         else:
             if client_port in c.received_acks and len(c.received_acks[client_port]) == window_edge:
-                frame_num += 1
-                print(f'sending frame{frame_num} @window_edge:{window_edge} with {len(c.received_acks)} received_acks')
-                update_fileframes_sent_dict(frame_num, frame, client_port)
-                for _ in range(3):
-                    msg = pickle.dumps([frame_num, frame])
-                    s.sendto(msg, client_address)
-                    time.sleep(c.sleep_period)
-
-                window_edge += 1
                 frame = f.read(c.PACKETSIZE)
+
+                if not frame:
+                    exit = True
+
+                else:
+                    frame_num += 1
+                    print(f'sending frame{frame_num} @window_edge:{window_edge} with {len(c.received_acks[client_port])} received_acks\n')
+                    update_fileframes_sent_dict(frame_num, frame, client_port)
+
+                    if frame_num == 3000: 
+                        print(f'frame3000 is \n{frame}')
+
+
+                    for _ in range(3):
+                        msg = pickle.dumps([frame_num, frame])
+                        print(f'length of message{frame_num}: {len(msg)}')
+                        s.sendto(msg, client_address)
+                        time.sleep(c.sleep_period)
+
+                    window_edge += 1
             else:
-                curr_time = time.time() - c.start_time
-                if curr_time - c.fileframes_sent_dict[client_port][frame_num]['time'] >= c.ACK_PERIOD:
-                    print(f'fileframe sent time: {c.fileframes_sent_dict[frame_num]["time"]} \t time: {curr_time}')
-                    print(f'resending frame{frame_num} @window_edge:{window_edge} with {len(c.received_acks[client_port])} received_acks\n')
-                    resend_frame(frame_num, frame, client_address, s)
+                #before being over the window edge
+                if window_edge == c.WINDOWSIZE:
+                    for frame_check_num in range(window_edge):
+                        if frame_check_num not in c.received_acks[client_port]:
+                            frame_check_content = c.fileframes_sent_dict[client_port][frame_check_num]
+                            resend_frame(frame_check_num, frame_check_content, client_address, s)
+
+                #once we are over the window edge
+                else:
+                    curr_time = time.time() - c.start_time
+                    if curr_time - c.fileframes_sent_dict[client_port][frame_num]['time'] >= c.ACK_PERIOD:
+                        print(f'resending frame{frame_num} @window_edge:{window_edge} with {len(c.received_acks[client_port])} received_acks\n')
+                        resend_frame(frame_num, frame, client_address, s)
 
     f.close()
     c.frames_sent[client_port] = frame_num + 1 #to include the 0 packet
 
     print(f'done sending {c.frames_sent[client_port]} frames')
-    print(f'received_acks: {len(sorted(c.received_acks[client_port]))}) , c.frames_sent: {c.frames_sent[client_port]}')
 
     #SEND DONE SIGNAL IF DONE
     if c.received_file_request[client_port] and c.frames_sent[client_port] != 0 and len(c.received_acks[client_port]) == c.frames_sent[client_port]:
-        # print(f'length received_acks: {len(c.received_acks)} // frames_sent: {c.frames_sent}')
-        # print(f'length fileframes_sent_dict: {len(c.fileframes_sent_dict.keys())}\n\n') 
+        c.threadLock.acquire()
         reset_sender_frame_variables(client_port)
+        c.threadLock.release()
         
         print(f'\nsending DONE signal')
-        #TODO: WHAT IF THE DONE SIGNAL IS DROPPED?
         for _ in range(3):
             s.sendto(pickle.dumps("DONE"), client_address)
 
